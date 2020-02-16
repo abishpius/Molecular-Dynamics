@@ -1,0 +1,68 @@
+#!/usr/bin/python3/
+import numpy as np
+import sys
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import MDAnalysis
+import MDAnalysis.analysis
+from MDAnalysis.analysis.align import *
+from MDAnalysis.analysis.rms import *
+from MDAnalysis.analysis.contacts import *
+from MDAnalysis.analysis.distances import *
+from MDAnalysis.analysis.hbonds import *
+
+np.set_printoptions(threshold=np.inf,precision=2)
+
+#Print out the RMSD from the very first frame of the simulation to all of the frames as a NUMPY Array
+universe = MDAnalysis.Universe(sys.argv[1], sys.argv[2])
+prot = universe.select_atoms('name CA')
+universe.trajectory[0]
+startref = prot.positions
+startrmsd = []
+for ts in universe.trajectory:
+    startrmsd.append(rmsd(startref,prot.positions))
+a = np.array(startrmsd)
+#print(a)
+
+#Output the full NxN matrix of RMSDs
+q=[]
+for i in list(range(100)):
+    universe.trajectory[i]
+    startref = prot.positions
+    qrmsd = []
+    for ts in universe.trajectory:
+        qrmsd.append(rmsd(startref,prot.positions))
+    q.append(qrmsd)
+f = np.array(q)
+print(f)
+plt.matshow(f) #to see heatmap
+
+#Have your script take a floating point cutoff value and calculate the number of frames that are within that cutoff value of the first frame and output the result
+cnt = 0
+for i in a:
+    if i <= float(sys.argv[3]):
+        cnt+=1
+    else:
+        pass
+print("Frame 0 is within","{0:.2f}".format(float(sys.argv[3])),"of", cnt, "frames")
+
+#Find the frame in the trajectory that is within the provided RMSD cutoff of the most frames in the trajectory
+hnt = []
+for i in range(len(f)):
+    cnts = 0
+    for j in range(len(f)):
+        if f[i][j] <= float(sys.argv[3]):
+            cnts+=1
+        else:
+            pass
+    hnt.append(cnts)
+hp = np.array(hnt)
+print("Frame", str(hp.argmax()),"is within","{0:.2f}".format(float(sys.argv[3])), "of", str(np.max(hp)),"frames")
+
+#Find the 10 frames that have the most similar frames according to the cutoff and print them out in descending order
+m = list(range(100))
+pp = list(zip(m,hnt))
+qq = sorted(pp, key = lambda tup:(tup[1]), reverse = True)
+for i in list(range(10)):
+    print ("Frame", qq[i][0],"is within","{0:.2f}".format(float(sys.argv[3])), "of", qq[i][1], "frames")
